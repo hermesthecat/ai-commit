@@ -6,8 +6,9 @@ import { getDiffStaged, getDiffByMode } from './git-utils';
 import { ChatGPTAPI } from './openai-utils';
 import { getMainCommitPrompt } from './prompts';
 import { ProgressHandler } from './utils';
-import { GeminiAPI } from './gemini-utils';
-import { generateCommitWithClaude } from './claude-utils';
+import { GeminiAPI, generateMultipleCommitsWithGemini } from './gemini-utils';
+import { generateCommitWithClaude, generateMultipleCommitsWithClaude } from './claude-utils';
+import { generateMultipleCommitsWithOpenAI } from './openai-utils';
 
 /**
  * Generates a chat completion prompt for the commit message based on the provided diff.
@@ -76,6 +77,9 @@ export async function generateCommitMsg(arg) {
 
       const aiProvider = configManager.getConfig<string>(ConfigKeys.AI_PROVIDER, 'openai');
       const diffMode = configManager.getConfig<string>(ConfigKeys.DIFF_MODE, 'staged') as 'staged' | 'unstaged' | 'all';
+      const multipleSuggestions = configManager.getConfig<boolean>(ConfigKeys.MULTIPLE_SUGGESTIONS, false);
+      const suggestionCount = configManager.getConfig<number>(ConfigKeys.SUGGESTION_COUNT, 3);
+      const suggestionStrategy = configManager.getConfig<string>(ConfigKeys.SUGGESTION_STRATEGY, 'temperature') as 'temperature' | 'style' | 'single_request';
 
       // Get appropriate diff based on mode
       let progressMessage = 'Getting changes...';
@@ -124,36 +128,100 @@ export async function generateCommitMsg(arg) {
         additionalContext
       );
 
+      const generateMessage = multipleSuggestions 
+        ? `Generating ${suggestionCount} commit message options for ${diffMode} changes...`
+        : `Generating commit message for ${diffMode} changes...`;
+      
       progress.report({
         message: additionalContext
-          ? `Generating commit message for ${diffMode} changes with additional context...`
-          : `Generating commit message for ${diffMode} changes...`
+          ? `${generateMessage} (with additional context)`
+          : generateMessage
       });
       try {
         let commitMessage: string | undefined;
 
-        if (aiProvider === 'gemini') {
-          const geminiApiKey = configManager.getConfig<string>(ConfigKeys.GEMINI_API_KEY);
-          if (!geminiApiKey) {
-            throw new Error('Gemini API Key not configured');
-          }
-          commitMessage = await GeminiAPI(messages);
-        } else if (aiProvider === 'claude') {
-          const claudeApiKey = configManager.getConfig<string>(ConfigKeys.CLAUDE_API_KEY);
-          if (!claudeApiKey) {
-            throw new Error('Claude API Key not configured');
-          }
-          // Get the system prompt and diff for Claude
-          const systemPrompt = messages.map(m => m.content).join('\n');
-          commitMessage = await generateCommitWithClaude(systemPrompt, diff);
-        } else {
-          const openaiApiKey = configManager.getConfig<string>(ConfigKeys.OPENAI_API_KEY);
-          if (!openaiApiKey) {
-            throw new Error('OpenAI API Key not configured');
-          }
-          commitMessage = await ChatGPTAPI(messages as ChatCompletionMessageParam[]);
-        }
+        if (multipleSuggestions) {
+          // Generate multiple suggestions
+          let commitSuggestions: string[] = [];
 
+          if (aiProvider === 'gemini') {
+            const geminiApiKey = configManager.getConfig<string>(ConfigKeys.GEMINI_API_KEY);
+            if (!geminiApiKey) {
+              throw new Error('Gemini API Key not configured');
+            }
+            commitSuggestions = await generateMultipleCommitsWithGemini(messages, suggestionCount, suggestionStrategy);
+          } else if (aiProvider === 'claude') {
+            const claudeApiKey = configManager.getConfig<string>(ConfigKeys.CLAUDE_API_KEY);
+            if (!claudeApiKey) {
+              throw new Error('Claude API Key not configured');
+            }
+            const systemPrompt = messages.map(m => m.content).join('\n');
+            commitSuggestions = await generateMultipleCommitsWithClaude(systemPrompt, diff, suggestionCount, suggestionStrategy);
+          } else {
+            const openaiApiKey = configManager.getConfig<string>(ConfigKeys.OPENAI_API_KEY);
+            if (!openaiApiKey) {
+              throw new Error('OpenAI API Key not configured');
+            }
+            commitSuggestions = await generateMultipleCommitsWithOpenAI(messages as ChatCompletionMessageParam[], suggestionCount, suggestionStrategy);
+          }
+
+          // Show QuickPick for user selection
+          if (commitSuggestions.length > 1) {
+            progress.report({ message: 'Please select your preferred commit message...' });
+            
+            const quickPickItems = commitSuggestions.map((suggestion, index) => {
+              const lines = suggestion.split('\n');
+              const title = lines[0];
+              const body = lines.slice(1).join('\n').trim();
+              
+              return {
+                label: title,
+                description: `Option ${index + 1}`,
+                detail: body || undefined,
+                commitMessage: suggestion
+              };
+            });
+
+            const selected = await vscode.window.showQuickPick(quickPickItems, {
+              placeHolder: `Choose your preferred commit message (${aiProvider} ${suggestionStrategy})`,
+              matchOnDescription: true,
+              matchOnDetail: true,
+              ignoreFocusOut: false
+            });
+
+            if (selected) {
+              commitMessage = selected.commitMessage;
+            } else {
+              // User cancelled selection, use first suggestion as fallback
+              commitMessage = commitSuggestions[0];
+            }
+          } else {
+            // Fallback to first suggestion if generation failed
+            commitMessage = commitSuggestions[0] || 'Error: No commit messages generated';
+          }
+        } else {
+          // Generate single suggestion (existing logic)
+          if (aiProvider === 'gemini') {
+            const geminiApiKey = configManager.getConfig<string>(ConfigKeys.GEMINI_API_KEY);
+            if (!geminiApiKey) {
+              throw new Error('Gemini API Key not configured');
+            }
+            commitMessage = await GeminiAPI(messages);
+          } else if (aiProvider === 'claude') {
+            const claudeApiKey = configManager.getConfig<string>(ConfigKeys.CLAUDE_API_KEY);
+            if (!claudeApiKey) {
+              throw new Error('Claude API Key not configured');
+            }
+            const systemPrompt = messages.map(m => m.content).join('\n');
+            commitMessage = await generateCommitWithClaude(systemPrompt, diff);
+          } else {
+            const openaiApiKey = configManager.getConfig<string>(ConfigKeys.OPENAI_API_KEY);
+            if (!openaiApiKey) {
+              throw new Error('OpenAI API Key not configured');
+            }
+            commitMessage = await ChatGPTAPI(messages as ChatCompletionMessageParam[]);
+          }
+        }
 
         if (commitMessage) {
           scmInputBox.value = commitMessage;

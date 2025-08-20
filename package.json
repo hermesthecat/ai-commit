@@ -205,6 +205,33 @@
             "Only analyze unstaged changes (git diff)",
             "Analyze both staged and unstaged changes together"
           ]
+        },
+        "ai-commit.MULTIPLE_SUGGESTIONS": {
+          "type": "boolean",
+          "default": false,
+          "description": "Generate multiple commit message suggestions and let user choose from a list. When disabled, generates only one message directly."
+        },
+        "ai-commit.SUGGESTION_COUNT": {
+          "type": "number",
+          "default": 3,
+          "minimum": 2,
+          "maximum": 5,
+          "description": "Number of commit message suggestions to generate when multiple suggestions is enabled."
+        },
+        "ai-commit.SUGGESTION_STRATEGY": {
+          "type": "string",
+          "default": "temperature",
+          "description": "Strategy for generating multiple suggestions",
+          "enum": [
+            "temperature",
+            "style",
+            "single_request"
+          ],
+          "enumDescriptions": [
+            "Use different temperature values (0.3, 0.7, 0.9) for varied creativity",
+            "Use different styles (concise, detailed, technical)",
+            "Single request asking AI to generate multiple options"
+          ]
         }
       },
       "title": "AI Commit"
