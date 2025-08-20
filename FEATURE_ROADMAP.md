@@ -5,52 +5,36 @@ Bu dosya, AI Commit VS Code extension'ı için planlanan yeni özellikleri ve ge
 ## 📊 **Sistem Analizi Özeti**
 
 **Mevcut Güçlü Yönler:**
-- ✅ Çoklu AI provider desteği (OpenAI + Gemini)
+- ✅ Çoklu AI provider desteği (OpenAI + Gemini + Claude) 
 - ✅ Conventional Commits standardına uygunluk
 - ✅ Gitmoji desteği
 - ✅ 19 dil desteği
 - ✅ Tam prompt özelleştirme
 - ✅ Temiz modüler architecture
 - ✅ TypeScript ile tip güvenliği
+- ✅ Çoklu commit mesajı önerileri (QuickPick)
+- ✅ Unstaged/Staged/All changes desteği
 
 **Geliştirme Alanları:**
 - ❌ Test coverage eksikliği
-- ❌ Tek commit mesajı önerisi
-- ❌ Sadece staged changes analizi
 - ❌ Debugging araçları yetersiz
 
 ---
 
 ## 🚀 **YÜKSEK ÖNCELİK**
 
-### 1. **Çoklu Commit Mesajı Önerileri**
-**Açıklama:** Kullanıcıya 3 farklı commit mesajı alternatifi sunar  
+### 1. **Debug Output Channel**
+**Açıklama:** VS Code output channel ile debugging desteği  
 **Teknik Detay:**
 ```typescript
-// Kullanıcıya 3 farklı alternatif sunar
-const suggestions = await generateMultipleCommitMessages(diff, 3);
-const selected = await vscode.window.showQuickPick(suggestions);
+const outputChannel = vscode.window.createOutputChannel('AI Commit');
+outputChannel.appendLine(`Prompt sent: ${prompt}`);
+outputChannel.appendLine(`Response: ${response}`);
 ```
-**Faydası:** Kullanıcı deneyimini büyük oranda geliştirir  
-**Zorluk:** ⭐⭐⭐ (Orta)
+**Faydası:** Sorun gidermeyi kolaylaştırır  
+**Zorluk:** ⭐ (Çok Kolay)
 
-### 2. **Anthropic Claude Desteği**
-**Açıklama:** Claude'u üçüncü AI provider olarak ekle  
-**Teknik Detay:**
-- `claude-3-5-sonnet`, `claude-3-opus` model desteği
-- Anthropic API entegrasyonu
-- Configuration settings genişletme
-```typescript
-// claude-utils.ts dosyası oluştur
-export async function createClaudeClient(): Promise<Anthropic> {
-  const apiKey = configManager.getConfig<string>('CLAUDE_API_KEY');
-  return new Anthropic({ apiKey });
-}
-```
-**Faydası:** Daha fazla AI seçeneği = daha iyi sonuçlar  
-**Zorluk:** ⭐⭐⭐ (Orta)
-
-### 3. **Commit Geçmişi Analizi**
+### 2. **Commit Geçmişi Analizi**
 **Açıklama:** Son commit'leri analiz ederek proje stilini öğrenir  
 **Teknik Detay:**
 ```typescript
@@ -104,30 +88,7 @@ const mergedConfig = { ...globalConfig, ...projectConfig };
 
 ## ⚡ **HIZLI ÇÖZÜMLER**
 
-### 7. **Debug Output Channel**
-**Açıklama:** Debugging için özel VS Code output channel'ı  
-**Teknik Detay:**
-```typescript
-const outputChannel = vscode.window.createOutputChannel('AI Commit');
-outputChannel.appendLine(`Prompt sent: ${prompt}`);
-outputChannel.appendLine(`Response: ${response}`);
-outputChannel.show();
-```
-**Faydası:** Sorun gidermeyi kolaylaştırır  
-**Zorluk:** ⭐ (Çok Kolay)
-
-### 8. **Unstaged Changes Desteği**
-**Açıklama:** Staging area'ya almadan da commit mesajı üret  
-**Teknik Detay:**
-```typescript
-// Staging area'ya almadan da commit mesajı üret
-const unstagedDiff = await git.diff();
-const commitMsg = await generateFromDiff(unstagedDiff);
-```
-**Faydası:** Workflow esnekliği  
-**Zorluk:** ⭐⭐ (Kolay)
-
-### 9. **Issue/Ticket Entegrasyonu**
+### 7. **Issue/Ticket Entegrasyonu**
 **Açıklama:** Branch isminden ticket numarasını çıkarır  
 **Teknik Detay:**
 ```typescript
@@ -190,13 +151,11 @@ if (ticketMatch) {
 ## 📈 **Geliştirme Sırası Önerisi**
 
 1. **Debug Output Channel** (1 gün) - Hemen debugging'i iyileştirir
-2. **Çoklu Commit Önerileri** (3 gün) - En çok talep edilecek özellik
-3. **Claude Desteği** (2 gün) - Rekabet avantajı
-4. **Unstaged Changes** (1 gün) - Workflow iyileştirmesi
-5. **Issue Entegrasyonu** (2 gün) - Otomasyon değeri yüksek
-6. **PR Açıklama Üretici** (4 gün) - Advanced feature
+2. **Issue Entegrasyonu** (2 gün) - Otomasyon değeri yüksek
+3. **Commit Geçmişi Analizi** (4 gün) - Advanced feature
+4. **PR Açıklama Üretici** (4 gün) - Advanced feature
 
-**Toplam süre:** ~2 hafta yoğun geliştirme
+**Toplam süre:** ~1.5 hafta yoğun geliştirme
 
 ---
 
