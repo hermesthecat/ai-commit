@@ -185,6 +185,26 @@
           "minimum": 1,
           "maximum": 4096,
           "description": "Maximum tokens for Claude response (1-4096)."
+        },
+        "ai-commit.INCLUDE_UNSTAGED_CHANGES": {
+          "type": "boolean",
+          "default": false,
+          "description": "Include unstaged changes in commit message generation. When enabled, AI will analyze both staged and unstaged changes together."
+        },
+        "ai-commit.DIFF_MODE": {
+          "type": "string",
+          "default": "staged",
+          "description": "Which changes to analyze for commit message generation",
+          "enum": [
+            "staged",
+            "unstaged",
+            "all"
+          ],
+          "enumDescriptions": [
+            "Only analyze staged changes (git diff --cached)",
+            "Only analyze unstaged changes (git diff)",
+            "Analyze both staged and unstaged changes together"
+          ]
         }
       },
       "title": "AI Commit"

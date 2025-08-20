@@ -2,7 +2,7 @@ import * as fs from 'fs-extra';
 import { ChatCompletionMessageParam } from 'openai/resources';
 import * as vscode from 'vscode';
 import { ConfigKeys, ConfigurationManager } from './config';
-import { getDiffStaged } from './git-utils';
+import { getDiffStaged, getDiffByMode } from './git-utils';
 import { ChatGPTAPI } from './openai-utils';
 import { getMainCommitPrompt } from './prompts';
 import { ProgressHandler } from './utils';
@@ -75,16 +75,36 @@ export async function generateCommitMsg(arg) {
       const repo = await getRepo(arg);
 
       const aiProvider = configManager.getConfig<string>(ConfigKeys.AI_PROVIDER, 'openai');
+      const diffMode = configManager.getConfig<string>(ConfigKeys.DIFF_MODE, 'staged') as 'staged' | 'unstaged' | 'all';
 
-      progress.report({ message: 'Getting staged changes...' });
-      const { diff, error } = await getDiffStaged(repo);
-
-      if (error) {
-        throw new Error(`Failed to get staged changes: ${error}`);
+      // Get appropriate diff based on mode
+      let progressMessage = 'Getting changes...';
+      let noChangesMessage = 'No changes found';
+      
+      switch (diffMode) {
+        case 'staged':
+          progressMessage = 'Getting staged changes...';
+          noChangesMessage = 'No changes staged for commit';
+          break;
+        case 'unstaged':
+          progressMessage = 'Getting unstaged changes...';
+          noChangesMessage = 'No unstaged changes found';
+          break;
+        case 'all':
+          progressMessage = 'Getting all changes (staged + unstaged)...';
+          noChangesMessage = 'No changes found';
+          break;
       }
 
-      if (!diff || diff === 'No changes staged.') {
-        throw new Error('No changes staged for commit');
+      progress.report({ message: progressMessage });
+      const { diff, error } = await getDiffByMode(repo, diffMode);
+
+      if (error) {
+        throw new Error(`Failed to get ${diffMode} changes: ${error}`);
+      }
+
+      if (!diff || diff.includes('No changes') || diff.trim() === '') {
+        throw new Error(noChangesMessage);
       }
 
       const scmInputBox = repo.inputBox;
@@ -96,8 +116,8 @@ export async function generateCommitMsg(arg) {
 
       progress.report({
         message: additionalContext
-          ? 'Analyzing changes with additional context...'
-          : 'Analyzing changes...'
+          ? `Analyzing ${diffMode} changes with additional context...`
+          : `Analyzing ${diffMode} changes...`
       });
       const messages = await generateCommitMessageChatCompletionPrompt(
         diff,
@@ -106,8 +126,8 @@ export async function generateCommitMsg(arg) {
 
       progress.report({
         message: additionalContext
-          ? 'Generating commit message with additional context...'
-          : 'Generating commit message...'
+          ? `Generating commit message for ${diffMode} changes with additional context...`
+          : `Generating commit message for ${diffMode} changes...`
       });
       try {
         let commitMessage: string | undefined;
