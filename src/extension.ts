@@ -55,6 +55,22 @@ export async function activate(context: vscode.ExtensionContext) {
           );
         }
       }
+    } else if (provider === 'claude') {
+      const apiKey = configManager.getConfig<string>('CLAUDE_API_KEY');
+      if (!apiKey) {
+        const result = await vscode.window.showWarningMessage(
+          'Claude API Key not configured. Would you like to configure it now?',
+          'Yes',
+          'No'
+        );
+
+        if (result === 'Yes') {
+          await vscode.commands.executeCommand(
+            'workbench.action.openSettings',
+            'ai-commit.CLAUDE_API_KEY'
+          );
+        }
+      }
     }
   } catch (error) {
     console.error('Failed to activate extension:', error);

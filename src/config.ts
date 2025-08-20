@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { createOpenAIApi } from './openai-utils';
 import { createGeminiAPIClient } from './gemini-utils';
+import { createClaudeClient } from './claude-utils';
 
 /**
  * Configuration keys used in the AI commit extension.
@@ -25,6 +26,12 @@ export enum ConfigKeys {
   GEMINI_API_KEY = 'GEMINI_API_KEY',
   GEMINI_MODEL = 'GEMINI_MODEL',
   GEMINI_TEMPERATURE = 'GEMINI_TEMPERATURE',
+  
+  CLAUDE_API_KEY = 'CLAUDE_API_KEY',
+  CLAUDE_MODEL = 'CLAUDE_MODEL',
+  CLAUDE_TEMPERATURE = 'CLAUDE_TEMPERATURE',
+  CLAUDE_MAX_TOKENS = 'CLAUDE_MAX_TOKENS',
+  
   AI_PROVIDER = 'AI_PROVIDER',
 }
 
